@@ -309,7 +309,8 @@ namespace SimpleLogger
         {
             get
             {
-                return _dateFormat ?? "yyyyMMddHHmmss";
+                // be aware that including hours/minutes/seconds can lead to the creation of multiple log files
+                return _dateFormat ?? "yyyyMMdd";
             }
             set
             {
