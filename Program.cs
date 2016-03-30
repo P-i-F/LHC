@@ -1,7 +1,6 @@
 ﻿using System;
 using SimpleLogger;
 using System.Configuration;
-using System.Runtime.InteropServices;
 
 namespace LHC
 {
@@ -10,6 +9,7 @@ namespace LHC
         public static bool debugMode = false;
         public static string customerCode = null;
         public static string customerName = null;
+
 
         // available parameters (position based)
         // [0] debug mode - 0/missing(default):no|1:yes
@@ -33,7 +33,7 @@ namespace LHC
             SimpleLog.Info("Debug mode is " + debugStatus);
 
             if (debugMode) {
-                ShowConsoleWindow();
+                Utils.ShowConsoleWindow();
                 Console.WriteLine("Debug mode {0}", debugStatus);
             }
 
@@ -69,6 +69,17 @@ namespace LHC
             //Console.WriteLine();
             //Console.WriteLine("This is the rest of it.");
 
+            string md5cc = Utils.GetMD5(customerCode);
+            Console.WriteLine();
+            Console.WriteLine("Hash is: {0}", md5cc);
+
+            Utils.EncryptFile("C:\\drgs\\LHC_res\\srv_plain.xml", "C:\\drgs\\LHC_res\\srv.dat");
+            Console.WriteLine("File encrypted");
+
+            Utils.DecryptFile("C:\\drgs\\LHC_res\\srv.dat", "C:\\drgs\\LHC_res\\srv_plain1.xml");
+            Console.WriteLine("File decrypted");
+
+
             Exit();
         }
 
@@ -91,39 +102,5 @@ namespace LHC
             Environment.Exit(exitCode);
         }
 
-        #region Show/Hide console window
-        public static void ShowConsoleWindow()
-        {
-            var handle = GetConsoleWindow();
-
-            if (handle == IntPtr.Zero)
-            {
-                AllocConsole();
-            }
-            else
-            {
-                ShowWindow(handle, SW_SHOW);
-            }
-        }
-
-        public static void HideConsoleWindow()
-        {
-            var handle = GetConsoleWindow();
-
-            ShowWindow(handle, SW_HIDE);
-        }
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        static extern bool AllocConsole();
-
-        [DllImport("kernel32.dll")]
-        static extern IntPtr GetConsoleWindow();
-
-        [DllImport("user32.dll")]
-        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-        const int SW_HIDE = 0;
-        const int SW_SHOW = 5;
-        #endregion
     }
 }
