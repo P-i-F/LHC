@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml;
 
 namespace LHC
 {
@@ -124,6 +125,65 @@ namespace LHC
                 cs.Close();
                 fsCrypt.Close();
 
+            }
+        }
+
+        public static void DecryptFileToString(string inputFile)
+        {
+
+            {
+                string password = @"A18771CF7E181CDF9DAD769D494BAFEF"; // Your Key Here
+                //UnicodeEncoding UE = new UnicodeEncoding();
+                byte[] key = Encoding.Unicode.GetBytes(password);
+
+                FileStream fsCrypt = new FileStream(inputFile, FileMode.Open);
+
+                RijndaelManaged RMCrypto = new RijndaelManaged();
+
+                Rfc2898DeriveBytes derivedKey = new Rfc2898DeriveBytes(password, key);
+                RMCrypto.Key = derivedKey.GetBytes(RMCrypto.KeySize / 8);
+                RMCrypto.IV = derivedKey.GetBytes(RMCrypto.BlockSize / 8);
+                //ICryptoTransform decryptor = RMCrypto.CreateDecryptor();
+
+                CryptoStream cs = new CryptoStream(fsCrypt,
+                    //RMCrypto.CreateDecryptor(key, key),
+                    RMCrypto.CreateDecryptor(),
+                    CryptoStreamMode.Read);
+
+                //FileStream fsOut = new FileStream(outputFile, FileMode.Create);
+                MemoryStream ms = new MemoryStream();
+
+                int data;
+                while ((data = cs.ReadByte()) != -1)
+                    //fsOut.WriteByte((byte)data);
+                    ms.WriteByte((byte)data);
+
+                //fsOut.Close();
+                cs.Close();
+                fsCrypt.Close();
+
+                string result;
+                ms.Position = 0;
+                using (var streamReader = new StreamReader(ms))
+                {
+                    result = streamReader.ReadToEnd();
+                }
+
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(result);
+
+
+            }
+        }
+
+        static string BytesToStringConverted(byte[] bytes)
+        {
+            using (var stream = new MemoryStream(bytes))
+            {
+                using (var streamReader = new StreamReader(stream))
+                {
+                    return streamReader.ReadToEnd();
+                }
             }
         }
 

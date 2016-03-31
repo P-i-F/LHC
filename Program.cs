@@ -76,7 +76,8 @@ namespace LHC
             Utils.EncryptFile("C:\\drgs\\LHC_res\\srv_plain.xml", "C:\\drgs\\LHC_res\\srv.dat");
             Console.WriteLine("File encrypted");
 
-            Utils.DecryptFile("C:\\drgs\\LHC_res\\srv.dat", "C:\\drgs\\LHC_res\\srv_plain1.xml");
+            //Utils.DecryptFile("C:\\drgs\\LHC_res\\srv.dat", "C:\\drgs\\LHC_res\\srv_plain1.xml");
+            Utils.DecryptFileToString("C:\\drgs\\LHC_res\\srv.dat");
             Console.WriteLine("File decrypted");
 
 
