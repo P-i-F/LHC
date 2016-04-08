@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SimpleLogger;
+using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -9,6 +10,14 @@ namespace LHC
 {
     class Utils
     {
+        // global app settings
+        public static class Settings
+        {
+            public static bool debugMode = false;
+            public static string customerCode = null;
+            public static string customerName = null;
+        }
+
 
         #region Show/Hide console window
         public static void ShowConsoleWindow()
@@ -45,6 +54,7 @@ namespace LHC
         const int SW_SHOW = 5;
         #endregion
 
+
         #region Cryptography
         ///<summary>
         /// Encrypts a file using Rijndael algorithm.
@@ -54,25 +64,19 @@ namespace LHC
 
             try
             {
-                string password = @"A18771CF7E181CDF9DAD769D494BAFEF"; // Your Key Here
-                //UnicodeEncoding UE = new UnicodeEncoding();
-                byte[] key = Encoding.Unicode.GetBytes(password);
+                string k = GetMD5(Settings.customerCode).ToUpper();
+                byte[] key = Encoding.Unicode.GetBytes(k);
 
                 string cryptFile = outputFile;
                 FileStream fsCrypt = new FileStream(cryptFile, FileMode.Create);
 
                 RijndaelManaged RMCrypto = new RijndaelManaged();
 
-                Rfc2898DeriveBytes derivedKey = new Rfc2898DeriveBytes(password, key);
+                Rfc2898DeriveBytes derivedKey = new Rfc2898DeriveBytes(k, key);
                 RMCrypto.Key = derivedKey.GetBytes(RMCrypto.KeySize / 8);
                 RMCrypto.IV = derivedKey.GetBytes(RMCrypto.BlockSize / 8);
-                //ICryptoTransform encryptor = RMCrypto.CreateEncryptor();
 
-                CryptoStream cs = new CryptoStream(fsCrypt,
-                    //RMCrypto.CreateEncryptor(key, key),
-                    RMCrypto.CreateEncryptor(),
-                    CryptoStreamMode.Write);
-
+                CryptoStream cs = new CryptoStream(fsCrypt, RMCrypto.CreateEncryptor(), CryptoStreamMode.Write);
                 FileStream fsIn = new FileStream(inputFile, FileMode.Open);
 
                 int data;
@@ -93,28 +97,22 @@ namespace LHC
         ///<summary>
         /// Decrypts a file using Rijndael algorithm.
         ///</summary>
-        public static void DecryptFile(string inputFile, string outputFile)
+        public static bool DecryptFile(string inputFile, string outputFile)
         {
-
+            bool result = true;
+            try
             {
-                string password = @"A18771CF7E181CDF9DAD769D494BAFEF"; // Your Key Here
-                //UnicodeEncoding UE = new UnicodeEncoding();
-                byte[] key = Encoding.Unicode.GetBytes(password);
+                string k = GetMD5(Settings.customerCode).ToUpper();
+                byte[] key = Encoding.Unicode.GetBytes(k);
 
                 FileStream fsCrypt = new FileStream(inputFile, FileMode.Open);
-
                 RijndaelManaged RMCrypto = new RijndaelManaged();
 
-                Rfc2898DeriveBytes derivedKey = new Rfc2898DeriveBytes(password, key);
+                Rfc2898DeriveBytes derivedKey = new Rfc2898DeriveBytes(k, key);
                 RMCrypto.Key = derivedKey.GetBytes(RMCrypto.KeySize / 8);
                 RMCrypto.IV = derivedKey.GetBytes(RMCrypto.BlockSize / 8);
-                //ICryptoTransform decryptor = RMCrypto.CreateDecryptor();
 
-                CryptoStream cs = new CryptoStream(fsCrypt,
-                    //RMCrypto.CreateDecryptor(key, key),
-                    RMCrypto.CreateDecryptor(),
-                    CryptoStreamMode.Read);
-
+                CryptoStream cs = new CryptoStream(fsCrypt, RMCrypto.CreateDecryptor(), CryptoStreamMode.Read);
                 FileStream fsOut = new FileStream(outputFile, FileMode.Create);
 
                 int data;
@@ -124,23 +122,29 @@ namespace LHC
                 fsOut.Close();
                 cs.Close();
                 fsCrypt.Close();
-
             }
+            catch
+            {
+                result = false;
+            }
+
+            return result;
         }
 
         public static void DecryptFileToString(string inputFile)
         {
 
             {
-                string password = @"A18771CF7E181CDF9DAD769D494BAFEF"; // Your Key Here
+                //string password = @"A18771CF7E181CDF9DAD769D494BAFEF"; // Your Key Here
+                string k = GetMD5(Settings.customerCode).ToUpper();
                 //UnicodeEncoding UE = new UnicodeEncoding();
-                byte[] key = Encoding.Unicode.GetBytes(password);
+                byte[] key = Encoding.Unicode.GetBytes(k);
 
                 FileStream fsCrypt = new FileStream(inputFile, FileMode.Open);
 
                 RijndaelManaged RMCrypto = new RijndaelManaged();
 
-                Rfc2898DeriveBytes derivedKey = new Rfc2898DeriveBytes(password, key);
+                Rfc2898DeriveBytes derivedKey = new Rfc2898DeriveBytes(k, key);
                 RMCrypto.Key = derivedKey.GetBytes(RMCrypto.KeySize / 8);
                 RMCrypto.IV = derivedKey.GetBytes(RMCrypto.BlockSize / 8);
                 //ICryptoTransform decryptor = RMCrypto.CreateDecryptor();
@@ -171,7 +175,6 @@ namespace LHC
 
                 XmlDocument doc = new XmlDocument();
                 doc.LoadXml(result);
-
 
             }
         }
