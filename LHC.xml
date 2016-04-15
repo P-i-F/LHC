@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<sql>
+  <instances>
+    PIF\DEV
+    PIF\PROD
+	PIF\UAT
+  </instances>
+  <instances1>
+    PIF\DEV1
+    PIF\PROD1
+  </instances1>
+  <instances2>
+    PIF\DEV2
+    PIF\PROD2
+  </instances2>
+  <instances3>
+    PIF\DEV3
+    PIF\PROD3
+  </instances3>
+  <instances4>
+    PIF\DEV4
+    PIF\PROD4
+  </instances4>
+</sql>

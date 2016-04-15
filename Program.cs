@@ -1,20 +1,16 @@
 ﻿using System;
 using SimpleLogger;
-using System.Configuration;
 
 namespace LHC
 {
     class Program
     {
-        //public static bool debugMode = false;
-        //public static string customerCode = null;
-        //public static string customerName = null;
-
 
         // available parameters (position based)
         // [0] debug mode - 0/missing(default):no|1:yes
         static void Main(string[] args)
         {
+
             // initialize log file
             SimpleLog.SetLogFile(logDir: ".", prefix: "LHC_", writeText: false);
             SimpleLog.Info("Health check started.");
@@ -37,43 +33,32 @@ namespace LHC
                 Console.WriteLine("Debug mode {0}", debugStatus);
             }
 
-            // customer info
-            Utils.Settings.customerCode = ConfigurationManager.AppSettings["CustomerCode"];
-            Utils.Settings.customerName = ConfigurationManager.AppSettings["CustomerName"];
+            // get program configurations from the config file
+            Utils.InitProgramConfigurations();
 
-            if (String.IsNullOrEmpty(Utils.Settings.customerCode) || String.IsNullOrEmpty(Utils.Settings.customerName))
-            {
-                string errorMessage = "Customer code and/or name not available.";
-                SimpleLog.Error(errorMessage);
-                Exit(-1, errorMessage);
-            }
-            else {
-                SimpleLog.Info("Customer is " + Utils.Settings.customerCode + " - " + Utils.Settings.customerName);
-            }
+            // check if LHC.dat data file exists in the curent directory
+            Utils.InitDataFile();
 
+            //// dev only - for easier testing of config changes
+            Utils.EncryptFile("C:\\drgs\\LHC\\LHC.xml", "C:\\drgs\\LHC\\bin\\Debug\\LHC.dat");
+
+            // decrypt file
+            Utils.InitProgramData(Utils.DecryptFileToString(Utils.Settings.dataFile));
+
+            // load server list from decrypted program data
+            Utils.InitServerList();
+            
+
+            //// dev only - check server list
+            foreach (string server in Utils.Settings.servers) { Console.WriteLine(server); }
+
+
+            // allow user to read the info in debug mode before proceeding further
             if (Utils.Settings.debugMode)
             {
-                Console.WriteLine();
-                Console.WriteLine("Customer code: {0}", Utils.Settings.customerCode);
-                Console.WriteLine("Customer name: {0}", Utils.Settings.customerName);
-            }
-
-            // check if data file exists
-
-
-            // allow user to read the info in debug mode before proceeding furter
-            if (Utils.Settings.debugMode)
-            {
-                Console.WriteLine();
-                Console.WriteLine("Press any key to continue.");
+                Console.WriteLine("\r\nPress any key to continue.");
                 Console.ReadKey();
             }
-
-
-
-            //string md5cc = Utils.GetMD5(Utils.Settings.customerCode);
-            //Console.WriteLine();
-            //Console.WriteLine("Hash is: {0}", md5cc);
 
 
 
@@ -82,34 +67,14 @@ namespace LHC
             //Console.WriteLine("File encrypted");
 
             //Utils.DecryptFile("C:\\drgs\\LHC_res\\srv.dat", "C:\\drgs\\LHC_res\\srv_plain1.xml");
-            string errorMessage = "Data file decryption failed.";
-            SimpleLog.Error(errorMessage);
-            Exit(-1, errorMessage);
+            //errorMessage = "Data file decryption failed.";
+            //SimpleLog.Error(errorMessage);
+            //Utils.Exit(-1, errorMessage);
 
-            Utils.DecryptFileToString("C:\\drgs\\LHC_res\\srv.dat");
-            Console.WriteLine("File decrypted");
-
-            Exit();
+            Utils.Exit();
         }
 
-        static void Exit(int exitCode = 1, string errorMessage = "") {
 
-            if (Utils.Settings.debugMode) {
-
-                Console.WriteLine();
-                if (exitCode == -1)
-                {
-                    Console.WriteLine(errorMessage);
-                    //SimpleLog.ShowLogFile();
-                }
-                Console.WriteLine();
-                Console.WriteLine("Press any key to exit.");
-                Console.ReadKey();
-            }
-
-            SimpleLog.Info("Health check finished.");
-            Environment.Exit(exitCode);
-        }
 
     }
 }

@@ -1,9 +1,12 @@
 ﻿using SimpleLogger;
 using System;
+using System.Configuration;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
 
 namespace LHC
@@ -16,44 +19,119 @@ namespace LHC
             public static bool debugMode = false;
             public static string customerCode = null;
             public static string customerName = null;
+            public static string dataFile = null;
+            public static XmlDocument programData = null;
+            public static string[] servers;
         }
 
-
-        #region Show/Hide console window
-        public static void ShowConsoleWindow()
+        #region Helper methods
+        public static void InitProgramConfigurations()
         {
-            var handle = GetConsoleWindow();
 
-            if (handle == IntPtr.Zero)
+            // customer info
+            Settings.customerCode = ConfigurationManager.AppSettings["CustomerCode"];
+            Settings.customerName = ConfigurationManager.AppSettings["CustomerName"];
+
+            if (string.IsNullOrEmpty(Settings.customerCode) || string.IsNullOrEmpty(Settings.customerName))
             {
-                AllocConsole();
+                Exit(-1, "Customer code and/or name not available.");
             }
             else
             {
-                ShowWindow(handle, SW_SHOW);
+                SimpleLog.Info("Customer is " + Settings.customerCode + " - " + Settings.customerName);
+            }
+
+            if (Settings.debugMode)
+            {
+                Console.WriteLine("\r\nCustomer code: {0}", Settings.customerCode);
+                Console.WriteLine("Customer name: {0}", Settings.customerName);
             }
         }
 
-        public static void HideConsoleWindow()
+        public static void InitDataFile()
         {
-            var handle = GetConsoleWindow();
+ 
+            // check if data file exists
+            string currentDirectory = Environment.CurrentDirectory.TrimEnd(Path.DirectorySeparatorChar) + "\\";
+            string dataFile = currentDirectory + "LHC.dat";
 
-            ShowWindow(handle, SW_HIDE);
+            if (!File.Exists(dataFile))
+            {
+                Exit(-1, "Data file not found! [" + dataFile + "]");
+            }
+            else
+            {
+                Settings.dataFile = dataFile;
+                SimpleLog.Info("Data file identified [" + Settings.dataFile + "]");
+            }
+
+            if (Settings.debugMode)
+            {
+                Console.WriteLine("\r\nData file: {0}", Settings.dataFile);
+            }
         }
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        static extern bool AllocConsole();
+        public static void InitProgramData(string data)
+        {
+            XmlDocument xmlDoc = new XmlDocument();
+            try
+            {
+                xmlDoc.LoadXml(data);
+            }
+            catch (Exception ex)
+            {
+                Exit(-1, "Error loading XML configuration: " + ex.Message + ((ex.InnerException.Message != null) ? "\r\n" + ex.InnerException.Message : ""));
+            }
 
-        [DllImport("kernel32.dll")]
-        static extern IntPtr GetConsoleWindow();
+            Settings.programData = xmlDoc;
+            SimpleLog.Info("Data file decrypted and XML configuration loaded successfully.");
 
-        [DllImport("user32.dll")]
-        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+            //if (Settings.debugMode)
+            //{
+            //    Console.WriteLine("\r\nData file decrypted and XML configuration loaded successfully.");
+            //}
+        }
 
-        const int SW_HIDE = 0;
-        const int SW_SHOW = 5;
+        public static void InitServerList()
+        {
+            string[] servers = null;
+
+            try
+            {
+                XmlNode serversNode = Settings.programData.SelectSingleNode("/sql/instances");
+                string serversRaw = serversNode.InnerText;
+
+                // servers are stored one per line, split them
+                servers = Regex.Split(serversRaw, "\r\n");
+
+                // trim leading and trailing whitespace characters
+                servers = servers.Select(x => x.Trim()).ToArray();
+
+                // eliminate empty rows
+                servers = servers.Where(x => !string.IsNullOrEmpty(x)).ToArray();
+            }
+            catch (Exception ex)
+            {
+                Exit(-1, "Error initializing server list: " + ex.Message + ((ex.InnerException.Message != null) ? "\r\n" + ex.InnerException.Message : ""));
+            }
+
+            int cnt = servers.Length;
+            if (cnt == 0)
+            {
+                Exit(-1, "Server list is empty.");
+            }
+            else
+            {
+                Settings.servers = servers;
+                SimpleLog.Info("Server list initialized. " + cnt.ToString() + " servers found.");
+            }
+
+            if (Settings.debugMode)
+            {
+                Console.WriteLine("\r\n{0} servers found.", cnt);
+            }
+        }
         #endregion
-
 
         #region Cryptography
         ///<summary>
@@ -131,63 +209,41 @@ namespace LHC
             return result;
         }
 
-        public static void DecryptFileToString(string inputFile)
-        {
+        ///<summary>
+        /// Decrypts a file using Rijndael algorithm and stores the decrypted data into a string
+        ///</summary>
+        public static string DecryptFileToString(string inputFile)
+        { 
+            string k = GetMD5(Settings.customerCode).ToUpper();
+            byte[] key = Encoding.Unicode.GetBytes(k);
 
+            FileStream fsCrypt = new FileStream(inputFile, FileMode.Open);
+
+            RijndaelManaged RMCrypto = new RijndaelManaged();
+
+            Rfc2898DeriveBytes derivedKey = new Rfc2898DeriveBytes(k, key);
+            RMCrypto.Key = derivedKey.GetBytes(RMCrypto.KeySize / 8);
+            RMCrypto.IV = derivedKey.GetBytes(RMCrypto.BlockSize / 8);
+
+            CryptoStream cs = new CryptoStream(fsCrypt, RMCrypto.CreateDecryptor(), CryptoStreamMode.Read);
+            MemoryStream ms = new MemoryStream();
+
+            int data;
+            while ((data = cs.ReadByte()) != -1)
+                ms.WriteByte((byte)data);
+
+            cs.Close();
+            fsCrypt.Close();
+
+            string result;
+            ms.Position = 0;
+            using (var streamReader = new StreamReader(ms))
             {
-                //string password = @"A18771CF7E181CDF9DAD769D494BAFEF"; // Your Key Here
-                string k = GetMD5(Settings.customerCode).ToUpper();
-                //UnicodeEncoding UE = new UnicodeEncoding();
-                byte[] key = Encoding.Unicode.GetBytes(k);
-
-                FileStream fsCrypt = new FileStream(inputFile, FileMode.Open);
-
-                RijndaelManaged RMCrypto = new RijndaelManaged();
-
-                Rfc2898DeriveBytes derivedKey = new Rfc2898DeriveBytes(k, key);
-                RMCrypto.Key = derivedKey.GetBytes(RMCrypto.KeySize / 8);
-                RMCrypto.IV = derivedKey.GetBytes(RMCrypto.BlockSize / 8);
-                //ICryptoTransform decryptor = RMCrypto.CreateDecryptor();
-
-                CryptoStream cs = new CryptoStream(fsCrypt,
-                    //RMCrypto.CreateDecryptor(key, key),
-                    RMCrypto.CreateDecryptor(),
-                    CryptoStreamMode.Read);
-
-                //FileStream fsOut = new FileStream(outputFile, FileMode.Create);
-                MemoryStream ms = new MemoryStream();
-
-                int data;
-                while ((data = cs.ReadByte()) != -1)
-                    //fsOut.WriteByte((byte)data);
-                    ms.WriteByte((byte)data);
-
-                //fsOut.Close();
-                cs.Close();
-                fsCrypt.Close();
-
-                string result;
-                ms.Position = 0;
-                using (var streamReader = new StreamReader(ms))
-                {
-                    result = streamReader.ReadToEnd();
-                }
-
-                XmlDocument doc = new XmlDocument();
-                doc.LoadXml(result);
-
+                result = streamReader.ReadToEnd();
             }
-        }
 
-        static string BytesToStringConverted(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            {
-                using (var streamReader = new StreamReader(stream))
-                {
-                    return streamReader.ReadToEnd();
-                }
-            }
+            return result;
+
         }
 
         public static string GetMD5(string input)
@@ -207,5 +263,68 @@ namespace LHC
             }
         }
         #endregion Cryptography
+
+        #region Show/Hide console window
+        public static void ShowConsoleWindow()
+        {
+            var handle = GetConsoleWindow();
+
+            if (handle == IntPtr.Zero)
+            {
+                AllocConsole();
+            }
+            else
+            {
+                ShowWindow(handle, SW_SHOW);
+            }
+        }
+
+        public static void HideConsoleWindow()
+        {
+            var handle = GetConsoleWindow();
+
+            ShowWindow(handle, SW_HIDE);
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern bool AllocConsole();
+
+        [DllImport("kernel32.dll")]
+        static extern IntPtr GetConsoleWindow();
+
+        [DllImport("user32.dll")]
+        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        const int SW_HIDE = 0;
+        const int SW_SHOW = 5;
+        #endregion
+
+        public static void Exit(int exitCode = 1, string errorMessage = "")
+        {
+
+            if (Utils.Settings.debugMode)
+            {
+
+                Console.WriteLine();
+                if (exitCode == -1)
+                {
+                    Console.WriteLine(errorMessage);
+                    //SimpleLog.ShowLogFile();
+
+                }
+                Console.WriteLine();
+                Console.WriteLine("Press any key to exit.");
+                Console.ReadKey();
+            }
+
+            if (!String.IsNullOrEmpty(errorMessage))
+            {
+                SimpleLog.Error(errorMessage);
+            }
+
+            SimpleLog.Info("Health check finished.");
+            Environment.Exit(exitCode);
+        }
+
     }
 }
