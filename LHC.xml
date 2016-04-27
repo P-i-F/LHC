@@ -5,20 +5,34 @@
     PIF\PROD
 	PIF\UAT
   </instances>
-  <instances1>
-    PIF\DEV1
-    PIF\PROD1
-  </instances1>
-  <instances2>
-    PIF\DEV2
-    PIF\PROD2
-  </instances2>
-  <instances3>
-    PIF\DEV3
-    PIF\PROD3
-  </instances3>
-  <instances4>
-    PIF\DEV4
-    PIF\PROD4
-  </instances4>
+  <scripts>
+    <script code="001" description="Free space in data files">
+	  <tsql minVersion="8" maxVersion="10.5">
+		SELECT '100%' AS FreeSpace
+	  </tsql>
+	  <tsql minVersion="10" maxVersion="12">
+		SELECT '90%' AS FreeSpace
+	  </tsql>
+	</script>
+    <script code="002" description="Free space in log files">
+	  <tsql minVersion="9" maxVersion="12">
+		SELECT '100 MB' AS FreeSpace
+	  </tsql>
+	</script>
+	<script code="S03" description="Last backup date">
+	  <tsql  minVersion="8" maxVersion="13">
+		SELECT GetDate() AS LastBackupDate
+	  </tsql>
+	</script>
+	<script code="SCR4" description="Last checkdb date">
+	  <tsql minVersion="10" maxVersion="13">
+		SELECT GetDate() AS LastCheckDbDate
+	  </tsql>
+	</script>
+	<script code="2016" description="SQL 2016">
+	  <tsql minVersion="13" maxVersion="13">
+		SELECT '2016' AS Version
+	  </tsql>
+	</script>
+  </scripts>
 </sql>

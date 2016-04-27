@@ -54,6 +54,7 @@
     <None Include="app.config">
       <SubType>Designer</SubType>
     </None>
+    <None Include="LHC.changelog" />
     <None Include="LHC.dat" />
   </ItemGroup>
   <ItemGroup>

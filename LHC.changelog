@@ -1,0 +1,33 @@
+20160323
+	- integrated and tested logging class
+	- implemented command line parameter (used initially for a debug mode)
+
+20160324
+	- read from appSettings in configuration file (key-value pairs)
+	- show/hide console depending on debug mode
+
+20160330
+	- gave up on the idea of a single config file since config sections cannot contain CDATA or text elements
+	  (http://www.codeproject.com/Articles/50117/Extend-ConfigurationElement-to-Deserialize-Text-El)
+	- implemented and tested simple file encryption/decryption
+	- MD5 hash algorithm
+	- rework: moved all utility classes into a separate file
+
+20160331
+	- read from encrypted file into decrypted XML string
+
+20160408
+	- created a public settings/variables/constants class to be used throughout the project
+
+20160415
+	- rework of classes and program flow
+	- extracted server list, split and cleand it up and then iterated through it
+
+20160427
+	- parsed XML file for SQL scripts
+	- pulled script data into a dataset
+	- identified script code based on the server version
+
+TODO:
+	create the methods for script identification and managing
+
