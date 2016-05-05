@@ -28,6 +28,12 @@
 	- pulled script data into a dataset
 	- identified script code based on the server version
 
+20160505
+	- moved SQLs script initialization code to a standalone method
+
 TODO:
-	create the methods for script identification and managing
+	data helper class?
+	iterate through server list, connect to servers, log connection errors, run script, create folder structure and produce CSV files
+	zip files
+	email files
 

@@ -56,60 +56,24 @@ namespace LHC
             //// dev only - check server list
             foreach (string server in Utils.Settings.servers) { Console.WriteLine(server); }
 
+            // load scripts from data file
+            Utils.InitScripts();
 
-
-            DataSet scripts = new DataSet("scripts");
-            DataTable scriptHeader = scripts.Tables.Add("scriptHeader");
-            DataTable scriptContent = scripts.Tables.Add("scriptContent");
-
-            scriptHeader.Columns.AddRange(new DataColumn[] {
-                new DataColumn("code", typeof(string)),
-                new DataColumn("description", typeof(string))
-            });
-
-            scriptContent.Columns.AddRange(new DataColumn[] {
-                new DataColumn("scriptCode", typeof(string)),
-                new DataColumn("minVersion", typeof(decimal)),
-                new DataColumn("maxVersion", typeof(decimal)),
-                new DataColumn("tsql", typeof(string))
-            });
-
-            foreach (XmlNode scriptNode in Utils.Settings.programData.GetElementsByTagName("script"))
-            {
-                DataRow rowH = scriptHeader.Rows.Add(
-                    scriptNode.Attributes["code"].Value,
-                    scriptNode.Attributes["description"].Value);
-
-                Console.WriteLine("\r\nCode: {0}\r\nDescription: {1}", scriptNode.Attributes["code"].Value, scriptNode.Attributes["description"].Value);
-
-                XmlNodeList codes = scriptNode.SelectNodes("tsql");
-
-                foreach (XmlNode codeNode in codes)
-                {
-                    DataRow rowD = scriptContent.Rows.Add(
-                        scriptNode.Attributes["code"].Value,
-                        Convert.ToDecimal(codeNode.Attributes["minVersion"].Value, new CultureInfo("en-US")),
-                        Convert.ToDecimal(codeNode.Attributes["maxVersion"].Value, new CultureInfo("en-US")),
-                        codeNode.InnerText);
-                }
-            }
-
-            scriptHeader.ChildRelations.Add("FK_script_code", scriptHeader.Columns["code"], scriptContent.Columns["scriptCode"]);
-            var childRows = scriptHeader.Rows[0].GetChildRows("FK_script_code");
 
             //// dev only
-            TableToCSV(scriptHeader, "C:\\drgs\\LHC\\bin\\Debug\\scriptHdr.txt");
-            TableToCSV(scriptContent, "C:\\drgs\\LHC\\bin\\Debug\\scriptSql.txt");
+            TableToCSV(Utils.Settings.scripts.Tables["scriptHeader"], "C:\\drgs\\LHC\\bin\\Debug\\scriptHdr.txt");
+            TableToCSV(Utils.Settings.scripts.Tables["scriptContent"], "C:\\drgs\\LHC\\bin\\Debug\\scriptSql.txt");
 
+            //// dev only
             decimal version = 10.5m;
             string scriptCode;
             string filterExpression;
             DataRow[] scriptSql;
-            foreach (DataRow scrHdr in scriptHeader.Rows)
+            foreach (DataRow scrHdr in Utils.Settings.scripts.Tables["scriptHeader"].Rows)
             {
-                scriptCode = scrHdr["code"].ToString();
-                filterExpression = "scriptCode = '" + scriptCode + "' AND " + version.ToString().Replace(",",".") + " >= minVersion AND " + version.ToString().Replace(",", ".") + " <= maxVersion";
-                scriptSql = scriptContent.Select(filterExpression);
+                scriptCode = scrHdr["id"].ToString();
+                filterExpression = "scriptId = '" + scriptCode + "' AND " + version.ToString().Replace(",",".") + " >= minVersion AND " + version.ToString().Replace(",", ".") + " <= maxVersion";
+                scriptSql = Utils.Settings.scripts.Tables["scriptContent"].Select(filterExpression);
 
                 if (scriptSql.Length == 0)
                 {
@@ -137,7 +101,7 @@ namespace LHC
             }
 
 
-            //// generate XML structure for scripts and load them in a datatable
+            
 
 
             //Utils.EncryptFile("C:\\drgs\\LHC_res\\srv_plain.xml", "C:\\drgs\\LHC_res\\srv.dat");

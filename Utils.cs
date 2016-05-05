@@ -1,6 +1,8 @@
 ﻿using SimpleLogger;
 using System;
 using System.Configuration;
+using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -22,6 +24,7 @@ namespace LHC
             public static string dataFile = null;
             public static XmlDocument programData = null;
             public static string[] servers;
+            public static DataSet scripts;
         }
 
         #region Helper methods
@@ -115,20 +118,91 @@ namespace LHC
                 Exit(-1, "Error initializing server list: " + ex.Message + ((ex.InnerException.Message != null) ? "\r\n" + ex.InnerException.Message : ""));
             }
 
-            int cnt = servers.Length;
-            if (cnt == 0)
+            int cntServers = servers.Length;
+            if (cntServers == 0)
             {
                 Exit(-1, "Server list is empty.");
             }
             else
             {
                 Settings.servers = servers;
-                SimpleLog.Info("Server list initialized. " + cnt.ToString() + " servers found.");
+                SimpleLog.Info("Server list initialized. " + cntServers.ToString() + " servers found.");
             }
 
             if (Settings.debugMode)
             {
-                Console.WriteLine("\r\n{0} servers found.", cnt);
+                Console.WriteLine("\r\n{0} servers found.", cntServers);
+            }
+        }
+
+        public static void InitScripts()
+        {
+            DataSet scripts = new DataSet("scripts");
+            DataTable scriptHeader = scripts.Tables.Add("scriptHeader");
+            DataTable scriptContent = scripts.Tables.Add("scriptContent");
+
+            scriptHeader.Columns.AddRange(new DataColumn[] {
+                new DataColumn("id", typeof(string)),
+                new DataColumn("description", typeof(string))
+            });
+
+            scriptContent.Columns.AddRange(new DataColumn[] {
+                new DataColumn("scriptId", typeof(string)),
+                new DataColumn("minVersion", typeof(decimal)),
+                new DataColumn("maxVersion", typeof(decimal)),
+                new DataColumn("tsql", typeof(string))
+            });
+
+            int cntScripts = 0;
+            int cntVersions = 0;
+            
+            if (Settings.debugMode)
+            {
+                Console.WriteLine("\r\nIdentifying scripts:");
+            }
+
+            foreach (XmlNode scriptNode in Settings.programData.GetElementsByTagName("script"))
+            {
+                cntScripts++;
+                DataRow rowH = scriptHeader.Rows.Add(
+                    scriptNode.Attributes["id"].Value,
+                    scriptNode.Attributes["description"].Value);
+
+                XmlNodeList scriptVersions = scriptNode.SelectNodes("tsql");
+
+                foreach (XmlNode scriptVersion in scriptVersions)
+                {
+                    cntVersions++;
+                    DataRow rowD = scriptContent.Rows.Add(
+                        scriptNode.Attributes["id"].Value,
+                        Convert.ToDecimal(scriptVersion.Attributes["minVersion"].Value, new CultureInfo("en-US")),
+                        Convert.ToDecimal(scriptVersion.Attributes["maxVersion"].Value, new CultureInfo("en-US")),
+                        scriptVersion.InnerText);
+                }
+
+                if (Settings.debugMode)
+                {
+                    Console.WriteLine("{0} - {1}", scriptNode.Attributes["id"].Value, scriptNode.Attributes["description"].Value);
+                }
+                 
+            }
+
+            //scriptHeader.ChildRelations.Add("FK_script_id", scriptHeader.Columns["id"], scriptContent.Columns["scriptId"]);
+            //var childRows = scriptHeader.Rows[0].GetChildRows("FK_script_id");
+
+            if (cntScripts == 0 || cntVersions == 0)
+            {
+                Exit(-1, "Script or version count is empty.");
+            }
+            else
+            {
+                Settings.scripts = scripts;
+                SimpleLog.Info("Script list initialized. Identified " + cntScripts.ToString() + " scripts and " + cntVersions.ToString() + " versions.");
+            }
+
+            if (Settings.debugMode)
+            {
+                Console.WriteLine("\r\nIdentified {0} scripts and {1} versions.", cntScripts, cntVersions);
             }
         }
         #endregion

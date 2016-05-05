@@ -6,7 +6,7 @@
 	PIF\UAT
   </instances>
   <scripts>
-    <script code="001" description="Free space in data files">
+    <script id="001" description="Free space in data files">
 	  <tsql minVersion="8" maxVersion="10.5">
 		SELECT '100%' AS FreeSpace
 	  </tsql>
@@ -14,22 +14,22 @@
 		SELECT '90%' AS FreeSpace
 	  </tsql>
 	</script>
-    <script code="002" description="Free space in log files">
+    <script id="002" description="Free space in log files">
 	  <tsql minVersion="9" maxVersion="12">
 		SELECT '100 MB' AS FreeSpace
 	  </tsql>
 	</script>
-	<script code="S03" description="Last backup date">
+	<script id="S03" description="Last backup date">
 	  <tsql  minVersion="8" maxVersion="13">
 		SELECT GetDate() AS LastBackupDate
 	  </tsql>
 	</script>
-	<script code="SCR4" description="Last checkdb date">
+	<script id="SCR4" description="Last checkdb date">
 	  <tsql minVersion="10" maxVersion="13">
 		SELECT GetDate() AS LastCheckDbDate
 	  </tsql>
 	</script>
-	<script code="2016" description="SQL 2016">
+	<script id="2016.1" description="SQL 2016">
 	  <tsql minVersion="13" maxVersion="13">
 		SELECT '2016' AS Version
 	  </tsql>
