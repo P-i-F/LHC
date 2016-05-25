@@ -29,11 +29,18 @@
 	- identified script code based on the server version
 
 20160505
-	- moved SQLs script initialization code to a standalone method
+	- moved SQL script initialization code to a standalone method
+
+20160525
+	- method to create the folder structure to store the data (data\yyyyMMdd)
+	- moved log initialization to a distinct method
+
 
 TODO:
-	data helper class?
 	iterate through server list, connect to servers, log connection errors, run script, create folder structure and produce CSV files
-	zip files
+	data helper class?
+		- data access methods 
+		- CSV conversion methods
+	zip files (maybe password protect them)
 	email files
 

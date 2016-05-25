@@ -28,6 +28,38 @@ namespace LHC
         }
 
         #region Helper methods
+        public static void InitDataDirectory()
+        {
+            string currentDirectory = Environment.CurrentDirectory.TrimEnd(Path.DirectorySeparatorChar) + "\\";
+            string currentDate = DateTime.Today.ToString("yyyyMMdd");
+            string dataPath = currentDirectory + "data\\" + currentDate + "\\";
+
+            try
+            {
+                Directory.CreateDirectory(dataPath);
+            }
+            catch (Exception ex)
+            {
+                // log is not yet present, console is not yet available, just exit
+                //Console.WriteLine();
+                //Console.WriteLine("Error creating data path: " + ex.Message + ((ex.InnerException.Message != null) ? "\r\n" + ex.InnerException.Message : ""));
+                //Console.WriteLine("\r\nPress any key to exit.");
+                //Console.ReadKey();
+
+                Environment.Exit(-1);
+            }
+        }
+
+        public static void InitLogFile()
+        {
+            string currentDirectory = Environment.CurrentDirectory.TrimEnd(Path.DirectorySeparatorChar) + "\\";
+            string currentDate = DateTime.Today.ToString("yyyyMMdd");
+            string logPath = currentDirectory + "data\\" + currentDate + "\\";
+
+            SimpleLog.SetLogFile(logDir: logPath, prefix: "LHC_", writeText: false);
+            SimpleLog.Info("Health check started.");
+        }
+
         public static void InitProgramConfigurations()
         {
 
@@ -391,7 +423,7 @@ namespace LHC
                 Console.ReadKey();
             }
 
-            if (!String.IsNullOrEmpty(errorMessage))
+            if (!string.IsNullOrEmpty(errorMessage))
             {
                 SimpleLog.Error(errorMessage);
             }

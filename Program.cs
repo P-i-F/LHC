@@ -15,10 +15,11 @@ namespace LHC
         // [0] debug mode - 0/missing(default):no|1:yes
         static void Main(string[] args)
         {
+            // check for data folder and create subfolder for current date
+            Utils.InitDataDirectory();
 
             // initialize log file
-            SimpleLog.SetLogFile(logDir: ".", prefix: "LHC_", writeText: false);
-            SimpleLog.Info("Health check started.");
+            Utils.InitLogFile();
 
             // parse input parameters
             if (args.Length > 0)
