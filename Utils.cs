@@ -2,6 +2,8 @@
 using System;
 using System.Configuration;
 using System.Data;
+using System.Data.Common;
+using System.Data.SqlClient;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -38,14 +40,9 @@ namespace LHC
             {
                 Directory.CreateDirectory(dataPath);
             }
-            catch (Exception ex)
+            catch
             {
                 // log is not yet present, console is not yet available, just exit
-                //Console.WriteLine();
-                //Console.WriteLine("Error creating data path: " + ex.Message + ((ex.InnerException.Message != null) ? "\r\n" + ex.InnerException.Message : ""));
-                //Console.WriteLine("\r\nPress any key to exit.");
-                //Console.ReadKey();
-
                 Environment.Exit(-1);
             }
         }
@@ -403,6 +400,378 @@ namespace LHC
 
         const int SW_HIDE = 0;
         const int SW_SHOW = 5;
+        #endregion
+
+        #region DB utility methods
+
+        static string GetConnectionString(string serverName)
+        {
+            string conn = "";
+
+            // TODO
+            // build connection string
+
+            return conn;
+        }
+
+        /// <summary>
+        /// Executes the reader.
+        /// </summary>
+        /// <param name="commandText">The command text.</param>
+        /// <param name="commandType">Type of the command.</param>
+        /// <param name="dbParameters">The db parameters.</param>
+        /// <returns>A IDataReader object. </returns>
+        public static IDataReader ExecuteReader(string serverName, string commandText, CommandType commandType, params DbParameter[] dbParameters)
+        {
+            SqlConnection connection = null;
+            SqlCommand command = null;
+            IDataReader reader;
+            try
+            {
+                connection = new SqlConnection(GetConnectionString(serverName));
+                command = new SqlCommand(commandText, connection);
+
+                if (dbParameters != null && dbParameters.Length > 0)
+                {
+                    foreach (DbParameter param in dbParameters)
+                    {
+                        if (param != null)
+                            command.Parameters.Add(param);
+                    }
+                }
+                command.CommandType = commandType;
+                command.CommandTimeout = 600; // 10 minutes
+                connection.Open();
+                reader = command.ExecuteReader(CommandBehavior.CloseConnection);
+            }
+            catch (SqlException ex)
+            {
+                throw new DataException(string.Empty, ex);
+            }
+            catch (Exception ex)
+            {
+                throw new DataException(string.Empty, ex);
+            }
+            return reader;
+        }
+
+        /// <summary>
+        /// Executes the reader.
+        /// </summary>
+        /// <param name="commandText">The command text.</param>
+        /// <param name="commandType">Type of the command.</param>
+        /// <param name="dbParameters">The db parameters.</param>
+        /// <returns>A IDataReader object. </returns>
+        public static IDataReader ExecuteReader(out SqlException sqlEx, string serverName, string commandText, CommandType commandType, params DbParameter[] dbParameters)
+        {
+            sqlEx = null;
+            SqlConnection connection = null;
+            SqlCommand command = null;
+            IDataReader reader = null;
+            try
+            {
+                connection = new SqlConnection(GetConnectionString(serverName));
+                command = new SqlCommand(commandText, connection);
+
+                if (dbParameters != null && dbParameters.Length > 0)
+                {
+                    foreach (DbParameter param in dbParameters)
+                    {
+                        if (param != null)
+                            command.Parameters.Add(param);
+                    }
+                }
+                command.CommandType = commandType;
+                command.CommandTimeout = 600; // 10 minutes
+                connection.Open();
+                reader = command.ExecuteReader(CommandBehavior.CloseConnection);
+            }
+            catch (SqlException ex)
+            {
+                sqlEx = ex;
+            }
+            catch (Exception ex)
+            {
+                throw new DataException(string.Empty, ex);
+            }
+            return reader;
+        }
+
+        /// <summary>
+        /// Executes the non query.
+        /// </summary>
+        /// <param name="commandText">The command text.</param>
+        /// <param name="commandType">Type of the command.</param>
+        /// <param name="dbParameters">The db parameters.</param>
+        /// <returns></returns>
+        public static int ExecuteNonQuery(string serverName, string commandText, CommandType commandType, params DbParameter[] dbParameters)
+        {
+
+            int rowAffected = 0;
+
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(GetConnectionString(serverName)))
+                {
+                    SqlCommand command = new SqlCommand(commandText, connection);
+
+                    command.CommandType = commandType;
+                    command.CommandTimeout = 600; // 10 minutes
+
+                    if (dbParameters != null && dbParameters.Length > 0)
+                    {
+                        command.Parameters.AddRange(dbParameters);
+                    }
+                    connection.Open();
+                    rowAffected = command.ExecuteNonQuery();
+                }
+            }
+            catch (SqlException ex)
+            {
+                throw new DataException(ex.Message, ex);
+            }
+
+            return rowAffected;
+
+        }
+
+        /// <summary>
+        /// Executes the non query.
+        /// </summary>
+        /// <param name="commandText">The command text.</param>
+        /// <param name="commandType">Type of the command.</param>
+        /// <param name="dbParameters">The db parameters.</param>
+        /// <returns>The number of rows affected.</returns>
+        public static int ExecuteNonQuery(string serverName, string commandText, CommandType commandType, DbParameter[] dbParameters, bool isTransactionScope)
+        {
+            SqlConnection connection = null;
+            SqlCommand command = null;
+            int rowAffected = 0;
+
+            try
+            {
+                connection = new SqlConnection(GetConnectionString(serverName));
+                command = new SqlCommand(commandText, connection);
+
+                if (dbParameters != null && dbParameters.Length > 0)
+                {
+                    command.Parameters.AddRange(dbParameters);
+                }
+
+                command.CommandType = commandType;
+                command.CommandTimeout = 600; // 10 minutes
+
+                connection.Open();
+                rowAffected = command.ExecuteNonQuery();
+            }
+            catch (SqlException ex)
+            {
+                throw new DataException(ex.Message, ex);
+            }
+            catch (Exception ex)
+            {
+                throw new DataException(ex.Message, ex);
+            }
+            finally
+            {
+                if (connection != null
+                  && connection.State == ConnectionState.Open
+                  && !isTransactionScope)
+                {
+                    connection.Close();
+                    connection.Dispose();
+                }
+
+                if (command != null)
+                    command.Dispose();
+            }
+
+            return rowAffected;
+        }
+
+        /// <summary>
+        /// Executes the scalar.
+        /// </summary>
+        /// <param name="commandText">The command text.</param>
+        /// <param name="commandType">Type of the command.</param>
+        /// <param name="dbParameters">The db parameters.</param>
+        /// <returns>The first column of the first row in the result set, or a null reference (Nothing in Visual Basic) if the result set is empty.</returns>
+        public static object ExecuteScalar(string serverName, string commandText, CommandType commandType, DbParameter[] dbParameters)
+        {
+            SqlConnection connection = null;
+            SqlCommand command = null;
+            object result;
+
+            try
+            {
+                connection = new SqlConnection(GetConnectionString(serverName));
+                command = new SqlCommand(commandText, connection);
+                if (dbParameters != null)
+                    command.Parameters.AddRange(dbParameters);
+                command.CommandType = commandType;
+                command.CommandTimeout = 600; // 10 minutes
+
+                connection.Open();
+                result = command.ExecuteScalar();
+            }
+            catch (SqlException ex)
+            {
+                throw new DataException(ex.Message, ex);
+            }
+            finally
+            {
+                if (connection != null
+                  && connection.State == ConnectionState.Open)
+                {
+                    connection.Close();
+                    connection.Dispose();
+                }
+
+                if (command != null)
+                    command.Dispose();
+            }
+
+            return result;
+        }
+
+        public static object ExecuteScalar(string serverName, string commandText, CommandType commandType)
+        {
+            SqlConnection connection = null;
+            SqlCommand command = null;
+            object result;
+
+            try
+            {
+                connection = new SqlConnection(GetConnectionString(serverName));
+                command = new SqlCommand(commandText, connection);
+                //if (dbParameters != null)
+                //  command.Parameters.AddRange(dbParameters);
+                command.CommandType = commandType;
+                command.CommandTimeout = 600; // 10 minutes
+
+                connection.Open();
+                result = command.ExecuteScalar();
+            }
+            catch (SqlException ex)
+            {
+                throw new DataException(ex.Message, ex);
+            }
+            finally
+            {
+                if (connection != null
+                  && connection.State == ConnectionState.Open)
+                {
+                    connection.Close();
+                    connection.Dispose();
+                }
+
+                if (command != null)
+                    command.Dispose();
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Executes the data adapter.
+        /// </summary>
+        /// <param name="commandText">The command text.</param>
+        /// <param name="commandType">Type of the command.</param>
+        /// <param name="dbParameters">The db parameters.</param>
+        /// <returns>A DataSet to fill with records and, if necessary, schema.</returns>
+        public static DataSet ExecuteDataAdapter(string serverName, string commandText, CommandType commandType, DbParameter[] dbParameters)
+        {
+            SqlConnection connection = null;
+            SqlCommand command = null;
+            DbDataAdapter adapter = null;
+            DataSet ds = new DataSet();
+
+            try
+            {
+                connection = new SqlConnection(GetConnectionString(serverName));
+                command = new SqlCommand(commandText, connection);
+
+                if (dbParameters != null)
+                {
+                    command.Parameters.AddRange(dbParameters);
+                }
+                command.CommandType = commandType;
+                command.CommandTimeout = 600; // 10 minutes
+
+                adapter = new SqlDataAdapter(command);
+
+                adapter.Fill(ds);
+            }
+            catch (SqlException ex)
+            {
+                throw new DataException("Error retrieving data from the database", ex);
+            }
+            finally
+            {
+                if (connection != null
+                  && connection.State == ConnectionState.Open)
+                {
+                    connection.Close();
+                    connection.Dispose();
+                }
+
+                if (command != null)
+                    command.Dispose();
+
+                if (adapter != null)
+                    adapter.Dispose();
+            }
+
+            return ds;
+        }
+
+        public static void FillDataSet(string serverName, string procedureName, DataSet ds, string tableName, DbParameter[] dbParameters)
+        {
+            SqlCommand cmd = new SqlCommand(procedureName);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandTimeout = 0; // timeout nedefinit
+
+            FillDataSet(serverName, cmd, ds, tableName, dbParameters);
+        }
+
+        /// <summary>
+        /// Fills the dataset
+        /// </summary>
+        public static void FillDataSet(string serverName, SqlCommand selectCommand, DataSet ds, string tableName, params DbParameter[] dbParameters)
+        {
+            try
+            {
+                selectCommand.Connection = new SqlConnection(GetConnectionString(serverName));
+
+                if (dbParameters != null)
+                {
+                    selectCommand.Parameters.AddRange(dbParameters);
+                }
+
+                using (SqlDataAdapter adapter = new SqlDataAdapter())
+                {
+
+                    adapter.SelectCommand = selectCommand;
+                    adapter.FillError += new FillErrorEventHandler(adapter_FillError);
+
+                    adapter.Fill(ds, tableName);
+
+                }
+            }
+            catch (DBConcurrencyException dbEx)
+            {
+                throw new Exception("Concurrency error in FillDataSet", dbEx);
+            }
+            catch (SqlException sqlEx)
+            {
+                throw new DataException("Error retrieving data", sqlEx);
+            }
+        }
+
+        static void adapter_FillError(object sender, FillErrorEventArgs e)
+        {
+
+        }
         #endregion
 
         public static void Exit(int exitCode = 1, string errorMessage = "")

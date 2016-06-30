@@ -35,11 +35,15 @@
 	- method to create the folder structure to store the data (data\yyyyMMdd)
 	- moved log initialization to a distinct method
 
+20160630
+	- implemented helper methods for database access
+
 
 TODO:
 	iterate through server list, connect to servers, log connection errors, run script, create folder structure and produce CSV files
-	data helper class?
-		- data access methods 
+	data helper class
+		- create method for building the connection string dynamically from server name
+		- data access methods [done]
 		- CSV conversion methods
 	zip files (maybe password protect them)
 	email files
