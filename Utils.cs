@@ -406,12 +406,18 @@ namespace LHC
 
         static string GetConnectionString(string serverName)
         {
-            string conn = "";
+            if (string.IsNullOrEmpty(serverName))
+            {
+                Exit(-1, "No server name specified for creating a connection string.");
+            }
 
-            // TODO
-            // build connection string
+            SqlConnectionStringBuilder csBuilder = new SqlConnectionStringBuilder();
+            csBuilder["Data Source"] = serverName;
+            csBuilder["Integrated Security"] = true;
+            csBuilder["Initial Catalog"] = "master";
+            //csBuilder["Connect Timeout"] = 60; // default 15 seconds
 
-            return conn;
+            return csBuilder.ConnectionString;
         }
 
         /// <summary>

@@ -38,11 +38,14 @@
 20160630
 	- implemented helper methods for database access
 
+20160718
+	- connection string is built dynamically from server name
+
 
 TODO:
 	iterate through server list, connect to servers, log connection errors, run script, create folder structure and produce CSV files
 	data helper class
-		- create method for building the connection string dynamically from server name
+		- create method for building the connection string dynamically from server name [done]
 		- data access methods [done]
 		- CSV conversion methods
 	zip files (maybe password protect them)
