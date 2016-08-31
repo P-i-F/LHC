@@ -15,7 +15,7 @@ using System.Xml;
 
 namespace LHC
 {
-    class Utils
+    static class Utils
     {
         // global app settings
         public static class Settings
@@ -112,7 +112,7 @@ namespace LHC
             }
             catch (Exception ex)
             {
-                Exit(-1, "Error loading XML configuration: " + ex.Message + ((ex.InnerException.Message != null) ? "\r\n" + ex.InnerException.Message : ""));
+                Exit(-1, "Error loading XML configuration: " + ex.GetFullErrorMessage());
             }
 
             Settings.programData = xmlDoc;
@@ -144,7 +144,7 @@ namespace LHC
             }
             catch (Exception ex)
             {
-                Exit(-1, "Error initializing server list: " + ex.Message + ((ex.InnerException.Message != null) ? "\r\n" + ex.InnerException.Message : ""));
+                Exit(-1, "Error initializing server list: " + ex.GetFullErrorMessage());
             }
 
             int cntServers = servers.Length;
@@ -235,6 +235,119 @@ namespace LHC
             }
         }
         #endregion
+
+        public static void RunScripts()
+        {
+            string msg = "";
+            string connStr = "";
+            string tsqlCmd = "";
+            string sqlVersion = "";
+            string sqlCommonVersion = "";
+
+            string scriptCode;
+            string scriptDesc;
+            string scriptFilter;
+            DataRow[] scriptSql;
+
+            SimpleLog.Info("Script running started.");
+
+            foreach (string server in Settings.servers)
+            {
+                connStr = GetConnectionString(server);
+
+                using (SqlConnection sqlConn = new SqlConnection(connStr))
+                {
+                    try
+                    {
+                        sqlConn.Open();
+
+                        // would have been nice to be able to use the Version class
+                        // but can't figure out how to filter the script dataset with it
+                        // plus it has some corner cases like 1.0001 = 1.1
+                        tsqlCmd = "SELECT SERVERPROPERTY('ProductVersion')";
+
+                        using (SqlCommand sqlCmd = new SqlCommand(tsqlCmd, sqlConn))
+                        {
+                            sqlVersion = sqlCmd.ExecuteScalar().ToString();
+                        }
+
+                        sqlCommonVersion = sqlVersion.Substring(0, sqlVersion.IndexOf('.') + 2);
+
+                        msg = string.Format("Connected to [{0}] | Version is {1} | Common version is {2}", server, sqlVersion, sqlCommonVersion);
+                        LogAndDisplay(msg);
+
+
+                        foreach (DataRow scrHdr in Settings.scripts.Tables["scriptHeader"].Rows)
+                        {
+                            scriptCode = scrHdr["id"].ToString();
+                            scriptDesc = scrHdr["description"].ToString();
+                            scriptFilter = "scriptId = '" + scriptCode + "' AND " + sqlCommonVersion + " >= minVersion AND " + sqlCommonVersion + " <= maxVersion";
+                            scriptSql = Settings.scripts.Tables["scriptContent"].Select(scriptFilter);
+
+                            // treat warnings first
+                            if (scriptSql.Length == 0)
+                            {
+                                SimpleLog.Warning("Script not identified.");
+                                msg = string.Format("Script not identified for code {0}", scriptCode);
+                                LogAndDisplay(msg, "W");
+                            }
+                            if (scriptSql.Length > 1)
+                            {
+                                SimpleLog.Warning("Multiple scripts identified.");
+                                msg = string.Format("Multiple scripts ({0}) identified for code {1}", scriptSql.Length.ToString(), scriptCode);
+                                LogAndDisplay(msg, "W");
+                            }
+
+                            // run script
+                            if (scriptSql.Length == 1)
+                            {
+                                msg = string.Format("Script identified for code {0}", scriptCode);
+                                LogAndDisplay(msg);
+
+                                try
+                                {
+                                    tsqlCmd = scriptSql[0]["tsql"].ToString();
+
+                                    using (SqlCommand sqlCmd = new SqlCommand(tsqlCmd, sqlConn))
+                                    {
+                                        Console.WriteLine("  Running script...");
+          /////////////                              sqlVersion = sqlCmd.ExecuteScalar().ToString();
+                                        Console.WriteLine(sqlVersion);
+                                        Console.WriteLine("  Script completed.");
+                                    }
+
+
+                                }
+                                catch (Exception ex)
+                                {
+                                    // just log and move on to the next script
+                                    SimpleLog.Error("Error running script.");
+                                    msg = string.Format("Error running script {0} - {1}:\r\n{2}", scriptCode, scriptDesc, ex.GetFullErrorMessage());
+                                    LogAndDisplay(msg, "E");
+                                }
+                            }
+                        }
+ 
+                        if (Settings.debugMode)
+                        {
+                            Console.WriteLine("\r\nPress any key to move to the next server.");
+                            Console.ReadKey();
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        // just log and move on to the next server
+                        SimpleLog.Error("Error connecting to server.");
+                        msg = string.Format("Error connecting to server[{0}]\r\n{1}", server, ex.GetFullErrorMessage());
+                        LogAndDisplay(msg);
+                    }
+
+                }
+            }
+
+            SimpleLog.Info("Script running complete.");
+        }
 
         #region Cryptography
         ///<summary>
@@ -780,10 +893,45 @@ namespace LHC
         }
         #endregion
 
+        // extension method to get the full error message including the innermost (base) exception
+        public static string GetFullErrorMessage(this Exception ex)
+        {
+            string fullMessage = ex.Message;
+
+            if (ex.InnerException != null)
+                fullMessage += ex.GetBaseException().ToString();
+
+            return fullMessage;
+        }
+
+        public static void LogAndDisplay(string message, string severity = "I")
+        {
+            if (string.IsNullOrEmpty(message))
+                return;
+
+            if (Settings.debugMode)
+            {
+                switch(severity)
+                {
+                    case "I":
+                        SimpleLog.Info(message);
+                        break;
+                    case "W":
+                        SimpleLog.Warning(message);
+                        break;
+                    case "E":
+                        SimpleLog.Error(message);
+                        break;
+                }
+
+                Console.WriteLine(/*Environment.NewLine +*/ message);
+            }
+        }
+
         public static void Exit(int exitCode = 1, string errorMessage = "")
         {
 
-            if (Utils.Settings.debugMode)
+            if (Settings.debugMode)
             {
 
                 Console.WriteLine();

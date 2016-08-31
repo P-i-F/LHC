@@ -41,6 +41,16 @@
 20160718
 	- connection string is built dynamically from server name
 
+20160830
+	- iterate server list
+	- connect to servers
+	- log connection errors
+	- identify server version
+	- iterate script list
+	- identify script based on version
+	- log script errors
+
+
 
 TODO:
 	iterate through server list, connect to servers, log connection errors, run script, create folder structure and produce CSV files

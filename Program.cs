@@ -60,13 +60,16 @@ namespace LHC
             // load scripts from data file
             Utils.InitScripts();
 
+            // run the scripts on all the servers
+            Utils.RunScripts();
+
 
             //// dev only
             TableToCSV(Utils.Settings.scripts.Tables["scriptHeader"], "C:\\drgs\\LHC\\bin\\Debug\\scriptHdr.txt");
             TableToCSV(Utils.Settings.scripts.Tables["scriptContent"], "C:\\drgs\\LHC\\bin\\Debug\\scriptSql.txt");
 
             //// dev only
-            decimal version = 10.5m;
+/*            decimal version = 10.5m;
             string scriptCode;
             string filterExpression;
             DataRow[] scriptSql;
@@ -89,7 +92,7 @@ namespace LHC
                     Console.WriteLine("\r\nScript identified for code " + scriptCode + "\r\n" + scriptSql[0]["tsql"].ToString());
                 }
              }
-
+*/
 
 
 

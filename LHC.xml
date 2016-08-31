@@ -2,8 +2,7 @@
 <sql>
   <instances>
     PIF\DEV
-    PIF\PROD
-	PIF\UAT
+	PIF\PROD
   </instances>
   <scripts>
     <script id="001" description="Free space in data files">
@@ -27,6 +26,14 @@
 	<script id="SCR4" description="Last checkdb date">
 	  <tsql minVersion="10" maxVersion="13">
 		SELECT GetDate() AS LastCheckDbDate
+	  </tsql>
+	</script>
+	<script id="MULTI" description="SQL 2012 multiple versions">
+	  <tsql minVersion="8" maxVersion="12">
+		SELECT '2012' AS Version
+	  </tsql>
+	  <tsql minVersion="11" maxVersion="13">
+		SELECT '2012' AS Version
 	  </tsql>
 	</script>
 	<script id="2016.1" description="SQL 2016">
